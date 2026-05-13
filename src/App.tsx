@@ -1,122 +1,83 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import './App.css'
+import { useCallback, useEffect, useState } from "react";
+import { applyMove, createBoard, detectOutcome, type Board, type Player } from "./game";
+import { selectAIMove } from "./ai";
+import "./App.css";
 
-function App() {
-  const [count, setCount] = useState(0)
+const HUMAN: Player = "X";
+const AI: Player = "O";
+
+const statusText = (board: Board, toMove: Player): string => {
+  const outcome = detectOutcome(board);
+  if (outcome.kind === "win") return `${outcome.winner} wins`;
+  if (outcome.kind === "draw") return "Draw";
+  return toMove === HUMAN ? "Your turn (X)" : "AI thinking…";
+};
+
+const App = () => {
+  const [board, setBoard] = useState<Board>(createBoard);
+  const [toMove, setToMove] = useState<Player>(HUMAN);
+
+  const outcome = detectOutcome(board);
+  const gameOver = outcome.kind !== "ongoing";
+  const winningLine = outcome.kind === "win" ? new Set(outcome.line) : null;
+
+  const handleCellClick = useCallback(
+    (index: number) => {
+      if (toMove !== HUMAN) return;
+      const result = applyMove(board, index, HUMAN, toMove);
+      if (!result.ok) return;
+      setBoard(result.board);
+      setToMove(AI);
+    },
+    [board, toMove],
+  );
+
+  const handleReset = useCallback(() => {
+    setBoard(createBoard());
+    setToMove(HUMAN);
+  }, []);
+
+  useEffect(() => {
+    if (toMove !== AI || gameOver) return;
+    const timer = setTimeout(() => {
+      const index = selectAIMove(board);
+      if (index === null) return;
+      const result = applyMove(board, index, AI, AI);
+      if (!result.ok) return;
+      setBoard(result.board);
+      setToMove(HUMAN);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [board, toMove, gameOver]);
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+    <main className="app">
+      <h1>Tic-Tac-Toe</h1>
+      <p className="status" aria-live="polite">
+        {statusText(board, toMove)}
+      </p>
+      <div className="board" role="grid" aria-label="Tic-tac-toe board">
+        {board.map((cell, i) => {
+          const disabled = cell !== null || gameOver || toMove !== HUMAN;
+          const isWinning = winningLine?.has(i) ?? false;
+          return (
+            <button
+              key={i}
+              className={`cell${isWinning ? " cell--win" : ""}`}
+              onClick={() => handleCellClick(i)}
+              disabled={disabled}
+              aria-label={`Square ${i + 1}${cell ? `, ${cell}` : ", empty"}`}
+            >
+              {cell}
+            </button>
+          );
+        })}
+      </div>
+      <button className="reset" onClick={handleReset}>
+        Reset
+      </button>
+    </main>
+  );
+};
 
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
-}
-
-export default App
+export default App;
