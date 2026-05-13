@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { applyMove, createBoard, detectOutcome, type Board, type Player } from "./game";
-import { selectAIMove } from "./ai";
+import { selectAIMove, type Difficulty } from "./ai";
 import "./App.css";
 
 const HUMAN: Player = "X";
@@ -16,6 +16,7 @@ const statusText = (board: Board, toMove: Player): string => {
 const App = () => {
   const [board, setBoard] = useState<Board>(createBoard);
   const [toMove, setToMove] = useState<Player>(HUMAN);
+  const [difficulty, setDifficulty] = useState<Difficulty>("easy");
 
   const outcome = detectOutcome(board);
   const gameOver = outcome.kind !== "ongoing";
@@ -40,7 +41,7 @@ const App = () => {
   useEffect(() => {
     if (toMove !== AI || gameOver) return;
     const timer = setTimeout(() => {
-      const index = selectAIMove(board);
+      const index = selectAIMove(board, difficulty);
       if (index === null) return;
       const result = applyMove(board, index, AI, AI);
       if (!result.ok) return;
@@ -48,7 +49,7 @@ const App = () => {
       setToMove(HUMAN);
     }, 300);
     return () => clearTimeout(timer);
-  }, [board, toMove, gameOver]);
+  }, [board, toMove, gameOver, difficulty]);
 
   return (
     <main className="app">
@@ -73,6 +74,29 @@ const App = () => {
           );
         })}
       </div>
+      <fieldset className="difficulty" aria-label="AI difficulty">
+        <legend>Difficulty</legend>
+        <label>
+          <input
+            type="radio"
+            name="difficulty"
+            value="easy"
+            checked={difficulty === "easy"}
+            onChange={() => setDifficulty("easy")}
+          />
+          Easy
+        </label>
+        <label>
+          <input
+            type="radio"
+            name="difficulty"
+            value="hard"
+            checked={difficulty === "hard"}
+            onChange={() => setDifficulty("hard")}
+          />
+          Hard (unbeatable)
+        </label>
+      </fieldset>
       <button className="reset" onClick={handleReset}>
         Reset
       </button>
